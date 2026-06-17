@@ -1,0 +1,14 @@
+Screen {
+    align: center middle;
+    padding: 1;
+}
+
+#tree {
+    border: none;
+}
+
+#path_input {
+    display: none;
+    border: none;
+    height: 1;
+}
