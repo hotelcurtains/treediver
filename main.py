@@ -12,6 +12,12 @@ from textual.app import App, ComposeResult
 from textual.containers import Container   
 from textual.widgets import DirectoryTree, Footer, Header, Label, Input
 
+""" 
+editor name or path to it 
+second value is fallback; try notepad++ or vim or whatever you like.
+"""
+EDITOR = os.environ.get('EDITOR', 'notepad')
+
 
 def display_time() -> str:
     return str(time.strftime('%H:%M:%S'))
@@ -40,6 +46,7 @@ class FilteredDirectoryTree(DirectoryTree):
 
     BINDINGS = [
         Binding("a", "toggle_dotfiles", "Toggle dotfiles"),
+        Binding("e", "edit_file", "Edit file"),
         Binding("left", "cursor_left", "Collapse/To parent", show=False),
         Binding("right", "select_cursor", "Run", show=False),
         Binding(
@@ -84,6 +91,46 @@ class FilteredDirectoryTree(DirectoryTree):
             # Otherwise, go to parent
             self.action_cursor_parent()
 
+    def _get_current_path(self) -> Path | None:
+        """Get the full path of the currently selected node."""
+        if self.cursor_node is None:
+            return None
+
+        node = self.cursor_node
+        parts = []
+        while node:
+            # Get the label text (might be formatted as Text object)
+            label = node.label
+            if hasattr(label, 'plain'):
+                # If it's a Text object, use .plain property
+                name = label.plain
+            else:
+                name = str(label)
+            # Don't include the root name
+            if node.parent is not None:
+                parts.append(name)
+            node = node.parent
+        # Reverse to get correct path order
+        parts.reverse()
+        
+        # Build the full path
+        result = self.path
+        for part in parts:
+            result = result / part
+        return result
+
+
+    def action_edit_file(self) -> None:
+        """Open the currently selected file in the configured editor."""
+        file_path = self._get_current_path()
+        if file_path:
+            if file_path.is_file():
+                subprocess.Popen([EDITOR, str(file_path)])
+                self.app.query_one('#info').content = f"{display_time()} | Opened {file_path.name} in {EDITOR}"
+            if file_path.is_dir():
+                os.startfile(os.path.realpath(file_path))
+                self.app.query_one('#info').content = f"{display_time()} | Opened {file_path} in files"
+
 
 class TreeDiverApp(App[None]):
 
@@ -98,18 +145,21 @@ class TreeDiverApp(App[None]):
         #yield Header()
         yield FilteredDirectoryTree(root, id="tree")
         yield PathInput(id="path_input", compact=True)
-        yield Label(f"{display_time()} | Opened with root {root}", id="info")
+        yield Label(f"{display_time()} | Started with root {root}", id="info")
         yield Footer(show_command_palette=False)
+
+
+    def action_edit(self) -> None:
+        """ open selected file for editing """
+        # subprocess.Popen(["notepad", os.path.realpath(message.path)])
+        # self.query_one('#info').content = f"{display_time()} | Opened {message.path.name} for editing"
+        self.query_one('#info').content = self.query_one('#tree', FilteredDirectoryTree).cursor_node.label
 
 
     @on(DirectoryTree.FileSelected)
     def handle_file_selected(self, message: DirectoryTree.FileSelected) -> None:
-        if message.path.name.startswith(".") or ("." not in message.path.name):
-            subprocess.Popen(["notepad", os.path.realpath(message.path)])
-            self.query_one('#info').content = f"{display_time()} | Opened {message.path.name} for editing"
-        else:
-            os.startfile(os.path.realpath(message.path))
-            self.query_one('#info').content = f"{display_time()} | Ran {message.path.name}"
+        os.startfile(os.path.realpath(message.path))
+        self.query_one('#info').content = f"{display_time()} | Ran {message.path.name}"
 
 
     def action_change_root(self) -> None:
@@ -121,6 +171,7 @@ class TreeDiverApp(App[None]):
         path_input.value = os.getcwd()
         path_input.display = True
         path_input.focus()
+        path_input.cursor_position = len(path_input.value)
         
         
     @on(Input.Submitted)
