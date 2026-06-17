@@ -47,6 +47,8 @@ class FilteredDirectoryTree(DirectoryTree):
     BINDINGS = [
         Binding("a", "toggle_dotfiles", "Toggle dotfiles"),
         Binding("e", "edit_file", "Edit file"),
+        Binding("alt+c", "make_root", "Select as root"),
+        Binding("alt+up", "root_up", "Move root up"),
         Binding("left", "cursor_left", "Collapse/To parent", show=False),
         Binding("right", "select_cursor", "Run", show=False),
         Binding(
@@ -59,16 +61,19 @@ class FilteredDirectoryTree(DirectoryTree):
             "shift+right",
             "cursor_parent_next_sibling",
             "To next ancestor",
+            show=False
         ),
         Binding(
             "shift+up",
             "cursor_previous_sibling",
             "To previous sibling",
+            show=False
         ),
         Binding(
             "shift+down",
             "cursor_next_sibling",
             "To next sibling",
+            show=False
         ),
     ]  
 
@@ -132,6 +137,23 @@ class FilteredDirectoryTree(DirectoryTree):
                 self.app.query_one('#info').content = f"{display_time()} | Opened {file_path} in files"
 
 
+    def action_make_root(self) -> None:
+        file_path = self._get_current_path()
+        info = self.app.query_one('#info')
+        if file_path and file_path.is_dir():
+            self.path = file_path
+            info.content = f"{display_time()} | Changed root to {file_path}"
+        else:
+            info.content = f"{display_time()} | Cannot set file as root {file_path}"
+        
+    def action_root_up(self) -> None:
+        file_path = self.path.parent
+        info = self.app.query_one('#info')
+        if file_path and file_path.is_dir():
+            self.path = file_path
+            info.content = f"{display_time()} | Changed root to {file_path}"
+
+
 class TreeDiverApp(App[None]):
 
     CSS_PATH = "treediver.tcss"
@@ -167,8 +189,8 @@ class TreeDiverApp(App[None]):
         tree = self.query_one('#tree', FilteredDirectoryTree)
         tree.disabled = True
         path_input = self.query_one('#path_input', Input)
-        path_input.placeholder = os.getcwd()
-        path_input.value = os.getcwd()
+        path_input.placeholder = str(tree.path)
+        path_input.value = str(tree.path)
         path_input.display = True
         path_input.focus()
         path_input.cursor_position = len(path_input.value)
@@ -194,6 +216,8 @@ class TreeDiverApp(App[None]):
             tree.disabled = False
             tree.focus()
 
+
+      
 
 if __name__ == "__main__":
     TreeDiverApp().run()
