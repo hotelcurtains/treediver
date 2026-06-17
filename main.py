@@ -20,7 +20,7 @@ EDITOR = os.environ.get('EDITOR', 'notepad')
 
 
 def display_time() -> str:
-    return str(time.strftime('%H:%M:%S'))
+    return time.strftime('%H:%M:%S')
 
 
 class PathInput(Input):
@@ -113,7 +113,7 @@ class FilteredDirectoryTree(DirectoryTree):
         # Reverse to get correct path order
         parts.reverse()
         
-        # Build the full path
+        # Build the full path as Path object
         result = self.path
         for part in parts:
             result = result / part
