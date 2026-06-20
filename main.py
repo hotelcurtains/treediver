@@ -34,7 +34,7 @@ def parse():
         '-r', '--root',
         nargs=1,
         type=Path,
-        help="the root for the program. defaults to currect working directory.",
+        help="the root for the program. defaults to current working directory.",
     )
     parser.add_argument(
         '-e', '--editor',
