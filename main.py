@@ -1,10 +1,11 @@
+import argparse
 import os
 import subprocess
 import time
+import shutil
 
 from pathlib import Path
 from typing import Iterable
-
 
 from textual import on
 from textual.binding import Binding
@@ -12,15 +13,57 @@ from textual.app import App, ComposeResult
 from textual.containers import Container   
 from textual.widgets import DirectoryTree, Footer, Header, Label, Input
 
+version = "0.0.1"
+
 """ 
-editor name or path to it 
-second value is fallback; try notepad++ or vim or whatever you like.
+editor name or path to it
 """
-EDITOR = os.environ.get('EDITOR', 'notepad')
+EDITOR = os.environ.get('EDITOR', None)
 
 
 def display_time() -> str:
     return time.strftime('%H:%M:%S')
+
+
+def parse():
+    parser = argparse.ArgumentParser(
+        prog='treediver',
+        description='a tree-based file explorer'
+    )
+    parser.add_argument(
+        '-r', '--root',
+        nargs=1,
+        type=Path,
+        help="the root for the program. defaults to currect working directory.",
+    )
+    parser.add_argument(
+        '-e', '--editor',
+        nargs=1,
+        type=Path,
+        help="the editor to use. uses your $EDITOR environment variable by default.",
+    )
+    parser.add_argument('--version', 
+        action='version', 
+        version=f'%(prog)s {version}'
+    )
+
+    # parse, process, and store args
+    args = parser.parse_args()
+
+    root = os.getcwd()
+    if args.root:
+        root = args.root[0]
+        root = Path(os.path.realpath(root))
+        assert root.exists(), f"Root path does not exist: {root}"
+        assert root.is_dir(), f"Root path is not a directory: {root}"
+
+    if args.editor:
+        editor = args.editor[0]
+        assert shutil.which(editor), f"Cannot find editor: {editor}"
+        global EDITOR 
+        EDITOR = editor
+    
+    return root
 
 
 class PathInput(Input):
@@ -37,7 +80,6 @@ class PathInput(Input):
         tree.disabled = False
         tree.focus()
         
-
 
 class FilteredDirectoryTree(DirectoryTree):
     dotfiles = False
@@ -77,10 +119,12 @@ class FilteredDirectoryTree(DirectoryTree):
         ),
     ]  
 
+
     def action_toggle_dotfiles(self) -> None:
         """Toggle the visibility of dotfiles."""
         self.dotfiles = not self.dotfiles
         self.reload()
+
 
     def action_cursor_left(self) -> None:
         """Collapse expanded directory or go to parent directory."""
@@ -95,6 +139,7 @@ class FilteredDirectoryTree(DirectoryTree):
         else:
             # Otherwise, go to parent
             self.action_cursor_parent()
+
 
     def _get_current_path(self) -> Path | None:
         """Get the full path of the currently selected node."""
@@ -145,7 +190,8 @@ class FilteredDirectoryTree(DirectoryTree):
             info.content = f"{display_time()} | Changed root to {file_path}"
         else:
             info.content = f"{display_time()} | Cannot set file as root {file_path}"
-        
+    
+    
     def action_root_up(self) -> None:
         file_path = self.path.parent
         info = self.app.query_one('#info')
@@ -162,20 +208,14 @@ class TreeDiverApp(App[None]):
         Binding("escape", "quit", "Quit"),
     ]
     
+
     def compose(self) -> ComposeResult:
-        root = os.getcwd()
+        root = parse()
         #yield Header()
         yield FilteredDirectoryTree(root, id="tree")
         yield PathInput(id="path_input", compact=True)
         yield Label(f"{display_time()} | Started with root {root}", id="info")
         yield Footer(show_command_palette=False)
-
-
-    def action_edit(self) -> None:
-        """ open selected file for editing """
-        # subprocess.Popen(["notepad", os.path.realpath(message.path)])
-        # self.query_one('#info').content = f"{display_time()} | Opened {message.path.name} for editing"
-        self.query_one('#info').content = self.query_one('#tree', FilteredDirectoryTree).cursor_node.label
 
 
     @on(DirectoryTree.FileSelected)
@@ -216,8 +256,6 @@ class TreeDiverApp(App[None]):
             tree.disabled = False
             tree.focus()
 
-
-      
 
 if __name__ == "__main__":
     TreeDiverApp().run()
