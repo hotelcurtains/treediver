@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "treediver"
+version = "0.0.1"
+description = "A basic tree-based file explorer TUI."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "GPL-3.0-only"
+license-files = ["LICEN[CS]E*"]
+dependencies = ["textual",]
+
+[project.urls]
+Homepage = "https://github.com/hotelcurtains/treediver"
+Issues = "https://github.com/hotelcurtains/treediver/issues"
+
+[project.scripts]
+treediver = "treediver.main:main"
